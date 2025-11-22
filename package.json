@@ -1,0 +1,39 @@
+{
+  "name": "ptc-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5",
+    "nodemailer": "^6.9.7",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
+```
+
+4. Scroll in basso → Click **"Commit new file"** (verde)
+
+5. Ripeti per `server.js` (ti do il codice dopo)
+
+---
+
+## 🚨 **Se NON Vedi "Add file"**
+
+Probabilmente hai creato repository **SENZA** il README.
+
+**Soluzione rapida:**
+
+Nella pagina vuota del repository, cerca questo testo:
+```
+"creating a new file"
