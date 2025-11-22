@@ -1,7 +1,3 @@
-// ============================================
-// server.js - PTC Backend Ottimizzato per Render
-// ============================================
-
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
@@ -13,43 +9,33 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
-// ============================================
-// MIDDLEWARE
-// ============================================
 app.use(express.json());
 app.use(cors({
     origin: process.env.FRONTEND_URL || '*',
     credentials: true
 }));
 
-// Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100
 });
 app.use('/api/', limiter);
 
-// ============================================
-// DATABASE CONNECTION (PostgreSQL)
-// ============================================
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Test connection
 pool.query('SELECT NOW()', (err, res) => {
     if (err) {
-        console.error('❌ Database connection error:', err);
+        console.error('Database connection error:', err);
     } else {
-        console.log('✅ Database connected at:', res.rows[0].now);
+        console.log('Database connected at:', res.rows[0].now);
     }
 });
 
-// Initialize database tables
 async function initDatabase() {
     try {
-        // Users table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -70,7 +56,6 @@ async function initDatabase() {
             )
         `);
         
-        // Withdrawals table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS withdrawals (
                 id VARCHAR(30) PRIMARY KEY,
@@ -85,7 +70,6 @@ async function initDatabase() {
             )
         `);
         
-        // Ad views table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS ad_views (
                 id SERIAL PRIMARY KEY,
@@ -97,7 +81,6 @@ async function initDatabase() {
             )
         `);
         
-        // Admins table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admins (
                 id SERIAL PRIMARY KEY,
@@ -109,17 +92,14 @@ async function initDatabase() {
             )
         `);
         
-        console.log('✅ Database tables initialized');
+        console.log('Database tables initialized');
     } catch (error) {
-        console.error('❌ Database initialization error:', error);
+        console.error('Database initialization error:', error);
     }
 }
 
 initDatabase();
 
-// ============================================
-// FAUCETPAY API
-// ============================================
 async function faucetPaySend(email, amount) {
     try {
         const response = await axios.post('https://faucetpay.io/api/v1/send', {
@@ -141,9 +121,6 @@ async function faucetPaySend(email, amount) {
     }
 }
 
-// ============================================
-// FRAUD DETECTION
-// ============================================
 async function checkFraud(userId) {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     const user = result.rows[0];
@@ -151,20 +128,17 @@ async function checkFraud(userId) {
     let score = 0;
     const reasons = [];
     
-    // Click speed check
     const timeSince = Date.now() - user.last_click_time;
     if (timeSince < 5000 && user.last_click_time > 0) {
         score += 30;
         reasons.push('Clicks too fast');
     }
     
-    // Daily limit check
     if (user.ads_today > (parseInt(process.env.DAILY_AD_LIMIT) || 20)) {
         score += 50;
         reasons.push('Exceeded daily limit');
     }
     
-    // Multiple accounts from same IP
     const ipCheck = await pool.query(
         'SELECT COUNT(*) as count FROM users WHERE ip_address = $1 AND id != $2',
         [user.ip_address, userId]
@@ -178,9 +152,6 @@ async function checkFraud(userId) {
     return { fraudScore: score, reasons };
 }
 
-// ============================================
-// AUTH MIDDLEWARE
-// ============================================
 function authenticateAdmin(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     
@@ -197,16 +168,10 @@ function authenticateAdmin(req, res, next) {
     }
 }
 
-// ============================================
-// API ROUTES
-// ============================================
-
-// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get config
 app.get('/api/config', (req, res) => {
     res.json({
         success: true,
@@ -218,7 +183,6 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// User connect
 app.post('/api/user/connect', async (req, res) => {
     try {
         const { email, referralCode } = req.body;
@@ -228,7 +192,6 @@ app.post('/api/user/connect', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid email' });
         }
         
-        // Check existing user
         const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         
         if (existing.rows.length > 0) {
@@ -255,7 +218,6 @@ app.post('/api/user/connect', async (req, res) => {
             });
         }
         
-        // Create new user
         const newRefCode = 'REF' + Math.random().toString(36).substring(2, 9).toUpperCase();
         
         const result = await pool.query(
@@ -286,7 +248,6 @@ app.post('/api/user/connect', async (req, res) => {
     }
 });
 
-// Claim ad
 app.post('/api/user/claim-ad', async (req, res) => {
     try {
         const { userId, adId, reward } = req.body;
@@ -307,7 +268,6 @@ app.post('/api/user/claim-ad', async (req, res) => {
             return res.status(429).json({ success: false, message: 'Daily limit reached' });
         }
         
-        // Fraud check
         const fraudCheck = await checkFraud(userId);
         
         if (fraudCheck.fraudScore > 70) {
@@ -320,7 +280,6 @@ app.post('/api/user/claim-ad', async (req, res) => {
         
         const rewardAmount = parseFloat(reward);
         
-        // Update user
         await pool.query(
             `UPDATE users SET
              balance = balance + $1,
@@ -333,13 +292,11 @@ app.post('/api/user/claim-ad', async (req, res) => {
             [rewardAmount, Date.now(), fraudCheck.fraudScore, userId]
         );
         
-        // Log ad view
         await pool.query(
             'INSERT INTO ad_views (user_id, ad_id, reward) VALUES ($1, $2, $3)',
             [userId, adId, rewardAmount]
         );
         
-        // Process referral
         let referralCommission = 0;
         if (user.referred_by) {
             const commission = rewardAmount * parseFloat(process.env.REFERRAL_COMMISSION || 0.4);
@@ -355,7 +312,6 @@ app.post('/api/user/claim-ad', async (req, res) => {
             referralCommission = commission;
         }
         
-        // Get updated user
         const updated = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
         const updatedUser = updated.rows[0];
         
@@ -377,7 +333,6 @@ app.post('/api/user/claim-ad', async (req, res) => {
     }
 });
 
-// Request withdrawal
 app.post('/api/user/withdraw', async (req, res) => {
     try {
         const { userId, amount } = req.body;
@@ -428,7 +383,6 @@ app.post('/api/user/withdraw', async (req, res) => {
     }
 });
 
-// Get user stats
 app.get('/api/user/:userId/stats', async (req, res) => {
     try {
         const userId = req.params.userId;
@@ -480,7 +434,6 @@ app.get('/api/user/:userId/stats', async (req, res) => {
     }
 });
 
-// Admin login
 app.post('/api/admin/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -519,7 +472,6 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// Get withdrawals (admin)
 app.get('/api/admin/withdrawals', authenticateAdmin, async (req, res) => {
     try {
         const { status } = req.query;
@@ -557,7 +509,6 @@ app.get('/api/admin/withdrawals', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Approve withdrawal (admin)
 app.post('/api/admin/withdrawal/approve', authenticateAdmin, async (req, res) => {
     try {
         const { withdrawalId } = req.body;
@@ -574,7 +525,6 @@ app.post('/api/admin/withdrawal/approve', authenticateAdmin, async (req, res) =>
             return res.status(400).json({ success: false, message: 'Already processed' });
         }
         
-        // Send via FaucetPay
         const paymentResult = await faucetPaySend(withdrawal.email, parseFloat(withdrawal.amount));
         
         if (paymentResult.success) {
@@ -605,7 +555,6 @@ app.post('/api/admin/withdrawal/approve', authenticateAdmin, async (req, res) =>
     }
 });
 
-// Reject withdrawal (admin)
 app.post('/api/admin/withdrawal/reject', authenticateAdmin, async (req, res) => {
     try {
         const { withdrawalId } = req.body;
@@ -618,13 +567,11 @@ app.post('/api/admin/withdrawal/reject', authenticateAdmin, async (req, res) => 
         
         const withdrawal = result.rows[0];
         
-        // Return balance
         await pool.query(
             'UPDATE users SET balance = balance + $1 WHERE id = $2',
             [withdrawal.amount, withdrawal.user_id]
         );
         
-        // Update withdrawal
         await pool.query(
             `UPDATE withdrawals SET
              status = 'rejected',
@@ -642,35 +589,27 @@ app.post('/api/admin/withdrawal/reject', authenticateAdmin, async (req, res) => 
     }
 });
 
-// ============================================
-// CRON JOBS
-// ============================================
 async function resetDailyAds() {
     try {
         await pool.query('UPDATE users SET ads_today = 0 WHERE last_reset_date < CURRENT_DATE');
         await pool.query('UPDATE users SET last_reset_date = CURRENT_DATE WHERE last_reset_date < CURRENT_DATE');
-        console.log('✅ Daily ads reset');
+        console.log('Daily ads reset');
     } catch (error) {
-        console.error('❌ Reset error:', error);
+        console.error('Reset error:', error);
     }
 }
 
-// Run every hour
 setInterval(resetDailyAds, 60 * 60 * 1000);
 
-// ============================================
-// START SERVER
-// ============================================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'Not set'}`);
-    resetDailyAds(); // Run on startup
+    console.log('Server running on port', PORT);
+    console.log('Environment:', process.env.NODE_ENV || 'development');
+    console.log('Frontend URL:', process.env.FRONTEND_URL || 'Not set');
+    resetDailyAds();
 });
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('SIGTERM received, closing...');
     await pool.end();
