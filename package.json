@@ -21,47 +21,7 @@
     "node": "20.x"
   }
 }
-```
-
-### **STEP 3: Salva**
-
-1. Scroll in basso
-2. Click **"Commit changes"** (verde)
-3. Click **"Commit changes"** di nuovo nel popup
-
----
-
-## 🔄 **Render Riproverà Automaticamente**
-
-Appena committti su GitHub, **Render rileverà il cambiamento** e rifarà il deploy automaticamente!
-
-Torna su Render e guarda i logs - dovrebbe ripartire da solo.
-
----
-
-## ✅ **Verifica il File**
-
-Il `package.json` deve iniziare con `{` e finire con `}`
-
-**NON deve avere:**
-- ❌ Backtick ```
-- ❌ "json" scritto sopra
-- ❌ Testo fuori dalle parentesi graffe
-
-**Deve essere così:**
-```
 {
   "name": "ptc-backend",
   ...
 }
-```
-
----
-
-## 🎯 **Dopo la Correzione**
-
-Su Render vedrai:
-```
-==> Cloning from GitHub...
-==> npm install...
-==> Your service is live! ✅
