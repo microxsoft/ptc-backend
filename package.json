@@ -1,6 +1,7 @@
 {
   "name": "ptc-backend",
   "version": "1.0.0",
+  "description": "PTC System with FaucetPay Integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -17,23 +18,50 @@
     "dotenv": "^16.3.1"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
   }
 }
 ```
 
-4. Scroll in basso → Click **"Commit new file"** (verde)
+### **STEP 3: Salva**
 
-5. Ripeti per `server.js` (ti do il codice dopo)
+1. Scroll in basso
+2. Click **"Commit changes"** (verde)
+3. Click **"Commit changes"** di nuovo nel popup
 
 ---
 
-## 🚨 **Se NON Vedi "Add file"**
+## 🔄 **Render Riproverà Automaticamente**
 
-Probabilmente hai creato repository **SENZA** il README.
+Appena committti su GitHub, **Render rileverà il cambiamento** e rifarà il deploy automaticamente!
 
-**Soluzione rapida:**
+Torna su Render e guarda i logs - dovrebbe ripartire da solo.
 
-Nella pagina vuota del repository, cerca questo testo:
+---
+
+## ✅ **Verifica il File**
+
+Il `package.json` deve iniziare con `{` e finire con `}`
+
+**NON deve avere:**
+- ❌ Backtick ```
+- ❌ "json" scritto sopra
+- ❌ Testo fuori dalle parentesi graffe
+
+**Deve essere così:**
 ```
-"creating a new file"
+{
+  "name": "ptc-backend",
+  ...
+}
+```
+
+---
+
+## 🎯 **Dopo la Correzione**
+
+Su Render vedrai:
+```
+==> Cloning from GitHub...
+==> npm install...
+==> Your service is live! ✅
