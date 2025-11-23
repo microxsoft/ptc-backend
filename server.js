@@ -600,7 +600,38 @@ async function resetDailyAds() {
 }
 
 setInterval(resetDailyAds, 60 * 60 * 1000);
-
+app.post('/api/setup/create-admin', async (req, res) => {
+    try {
+        const { username, password, secretKey } = req.body;
+        
+        if (secretKey !== 'guadoo2025setup') {
+            return res.status(403).json({ success: false, message: 'Invalid secret key' });
+        }
+        
+        const existing = await pool.query('SELECT * FROM admins WHERE username = $1', [username]);
+        
+        if (existing.rows.length > 0) {
+            return res.json({ success: false, message: 'Admin already exists' });
+        }
+        
+        const passwordHash = await bcrypt.hash(password, 10);
+        
+        await pool.query(
+            'INSERT INTO admins (username, password_hash, email, role) VALUES ($1, $2, $3, $4)',
+            [username, passwordHash, 'admin@guadoo.net', 'superadmin']
+        );
+        
+        res.json({
+            success: true,
+            message: 'Admin created successfully',
+            username: username
+        });
+        
+    } catch (error) {
+        console.error('Create admin error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
